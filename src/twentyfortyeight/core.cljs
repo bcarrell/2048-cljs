@@ -7,6 +7,8 @@
 
 (enable-console-print!)
 
+(def not-nil? (complement nil?))
+
 (defn randomize-start []
   "Returns two different integers from 0 to 15.  These are the two
   initial positions that start with 2."
@@ -78,8 +80,6 @@
   (if-let [open ((comp choose-random vec get-open) coll)]
     (assoc coll open 2)
     coll))
-
-(def not-nil? (complement nil?))
 
 (defn movable? [direction coll]
   "Given a direction and collection representing the board's current state,
