@@ -45,10 +45,13 @@
 (def key-ch (chan))
 
 (defn evt->dir [e]
+  "Translates a key code to a potential direction keyword."
   (let [keycode (.-which e)]
     (get keycodes keycode)))
 
 (defn key-listener [ch]
+  "When a directional key has been pressed, we drop it into
+  a channel so it can be processed by something else."
   (dommy/listen! js/window
                  :keyup
                  #(when-let [k (evt->dir %)]
