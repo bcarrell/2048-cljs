@@ -29,6 +29,7 @@
 
 (def board-state (atom (init-board)))
 (def score-state (atom 0))
+(def message-state (atom {:msg nil}))
 
 (def board-edges {:left [0 4 8 12]
                   :right [3 7 11 15]
@@ -98,7 +99,7 @@
   recursively combines them according to the game rules.
 
   Example:
-     [] [2 2 4 8]
+  [] [2 2 4 8]
 
   ;; => [4 4 8]
   "
@@ -162,21 +163,34 @@
       (map slide colls)
       colls)))
 
-(defn process-move [direction]
+(defn process-move [coll direction]
   "Given a direction, reorients and combines the tiles according
   to game rules.  If applicable, we add a new block."
-  (fn [xs]
-    (let [colls (arrange-and-combine xs direction)
-          coll (if (vertical-rows? direction)
-                 (into [] (flatten (apply interleave colls)))
-                 (into [] (flatten colls)))]
-      (if (not= coll xs) ;; we moved and it was different, add a block!
-        (add-new-block coll)
-        coll))))
+  (let [colls (arrange-and-combine coll direction)]
+    (if (vertical-rows? direction)
+      (into [] (flatten (apply interleave colls)))
+      (into [] (flatten colls)))))
+
+(defn loser? [coll]
+  "If all moves yield the same results, you lose.
+  No more moves possible."
+  (let [p-dups (partial partition-by identity)
+        v-partitioned (map p-dups (position-rows coll true))
+        v-count (apply + (map count v-partitioned))
+        h-partitioned (map p-dups (position-rows coll false))
+        h-count (apply + (map count h-partitioned))]
+    (= 32 (+ v-count h-count))))
+
+(defn winner? [coll]
+  "If 2048 exists on the board, you win!"
+  (boolean (some #{2048} coll)))
 
 (defn move [direction cursor]
-  "Transacts the application state when a move has been issued."
-  (om/transact! cursor (process-move direction)))
+  "Updates the application state when a move has been issued."
+  (let [data @cursor
+        moved (process-move data direction)]
+    (when-not (= moved data)
+      (om/update! cursor (add-new-block moved)))))
 
 (defn render-row [coll]
   "Creates an Om element representing a row.  A row contains 4 blocks."
@@ -185,7 +199,17 @@
 (defn render-block [x]
   "Creates an Om element representing a block within a row.  There are 16
   total blocks in the game."
-  (dom/div #js {:className "block"} x))
+  (dom/div #js {:className "block"}
+           (dom/h2 #js {:className "number"} x)))
+
+(defn message [app owner]
+  "An Om component representing a message, either Winner or Game Over."
+  (reify
+    om/IRender
+    (render [_]
+      (dom/h1 #js {:display (if (:msg app)
+                              "block"
+                              "none")} (:msg app)))))
 
 (defn score-board [app owner]
   "An Om component representing the score board."
@@ -204,6 +228,10 @@
               (let [direction (<! keypresses)]
                 (move direction app)
                 (recur))))))
+    om/IWillUpdate
+    (will-update [this next-state next-props]
+      (when (winner? next-state) (swap! message-state assoc :msg "Winner!"))
+      (when (loser? next-state) (swap! message-state assoc :msg "Loser!")))
     om/IRender
     (render [this]
       (let [rows (partition 4 (map render-block app))]
@@ -211,10 +239,17 @@
                nil
                (map #(render-row %) rows))))))
 
-;; attach to DOM
+;; =============
+;; Attach to DOM
+;; =============
+
 (om/root score-board
          score-state
          {:target (. js/document (getElementById "score"))})
+
+(om/root message
+         message-state
+         {:target (. js/document (getElementById "message"))})
 
 (om/root game-board
          board-state
