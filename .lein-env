@@ -1,1 +1,0 @@
-{:database-url "postgres://localhost:5432/peon?sslmode=disable", :application-env "development"}
