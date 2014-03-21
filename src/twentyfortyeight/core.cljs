@@ -24,7 +24,7 @@
   of three rows.  14 of the elements will begin as 0.  2 will
   have the value of 2."
   (let [[x y] (randomize-start)
-        coll (into [] (repeat 16 nil))]
+        coll (vec (repeat 16 nil))]
     (assoc coll x 2 y 2)))
 
 (def board-state (atom (init-board)))
@@ -65,8 +65,7 @@
 
 (defn get-open [coll]
   "Returns the indices of all zero items in a collection."
-  (map first (filter #(nil? (second %))
-                     (map-indexed vector coll))))
+  (map first (filter #(nil? (second %)) (map-indexed vector coll))))
 
 (defn add-score [amount]
   "Updates the game scoreboard by the amount."
@@ -168,8 +167,8 @@
   to game rules.  If applicable, we add a new block."
   (let [colls (arrange-and-combine coll direction)]
     (if (vertical-rows? direction)
-      (into [] (flatten (apply interleave colls)))
-      (into [] (flatten colls)))))
+      (vec (flatten (apply interleave colls)))
+      (vec (flatten colls)))))
 
 (defn loser? [coll]
   "If all moves yield the same results, you lose.
